@@ -104,16 +104,53 @@ model:
 ```
 ---
 
-## 🎨 第二阶段：ComfyUI 流程优化
+## 🎨 第二阶段：ComfyUI 生产力实战 (基于可视化工作流)
 
-在摸清底层逻辑后，我们转向 ComfyUI 进行更高效的工作流调试。
+在 PyCharm 环境验证成功后，我们将生产力沉淀到了 ComfyUI 中。针对 **RTX 5060 (8G)** 的硬件限制，本仓库提供的 JSON 工作流实现了资源调度的最大化。
 
-* **避坑要点**：
-    * **Manager 假死修复**：针对国内网络环境下 Manager 搜索卡死问题进行代理优化。
-    * **文件夹套娃**：修复了插件安装时常见的双层文件夹导致的节点加载失败问题。
-* **最终策略**：**本地调试工作流 + 云端（5090/4090）最终产出**。
+### 1. 工作流核心模块拆解 (Workflow Modules)
+
+本仓库 `workflow/` 目录下的 JSON 文件采用了 **分组解耦** 逻辑：
+
+* **姿态提取区 (Pose Extraction - 蓝色组)**：
+    * 使用 `DWPose Estimator` 节点进行预处理。
+    * **8G 适配建议**：先禁用其他组，单独运行此组生成骨骼序列（Pose Sequence），避免 Pose 提取与视频生成同时抢占显存。
+* **模型加载区 (Models Loading - 紫色组)**：
+    * 集成了 `WanVideo VAE`、`T5 Text Encoder` 和 `Transformer` 节点。
+    * 通过 `SetNode/GetNode` 逻辑大幅减少连线交叉，提升低显存环境下的调试效率。
+* **采样生成区 (Sampling - 核心区)**：
+    * 关键节点：`WanVideo Sampler`。
+    * 该模块已针对分块加载（Offload）进行优化，确保权重在系统内存与显存间平滑切换。
+
+
+
+### 2. 8G 显存极限优化参数 (Optimal Settings)
+
+为了在 8G 环境下稳定跑通工作流，请务必在节点中参考以下设置：
+
+| 参数项 | 推荐值 | 目的 |
+| :--- | :--- | :--- |
+| **VAE Mode** | **Tiled** (分块) | **核心开关**，防止解码高清视频时显存炸裂 |
+| **Sampling Steps** | 20 - 30 | 8G 显存下的效率最优解 |
+| **Resolution** | 832x480 / 480x832 | 1.3B 模型在该分辨率下表现最稳定 |
+| **Scheduler** | UniPC / DPM++ | 缩短采样时间，减少显存占用时长 |
+
+### 3. 环境补丁与物理外挂 (Hardware Hacks)
+
+* **虚拟内存 (Virtual Memory)**：手动将 Windows 虚拟内存设置为 **60GB - 80GB**。这是 8G 显存用户能点击“Queue Prompt”的物理门槛。
+* **节点依赖**：导入 JSON 后，若出现红框，请通过 `Manager -> Install Missing Custom Nodes` 补齐以下插件：
+    * `ComfyUI-WanVideo`
+    * `ControlNet-Aux` (DWPose 核心)
+    * `ComfyUI-VideoHelperSuite`
+    * `ComfyUI-Logic` (Set/Get 节点支持)
 
 ---
+
+## 🚀 如何从第一阶段过渡到第二阶段？
+
+1.  **路径共享**：在 ComfyUI 的 `extra_model_paths.yaml` 中，将路径指向你第一阶段存放模型权重的目录，避免磁盘空间浪费。
+2.  **显存回收**：在 ComfyUI 运行间隙，建议观察任务管理器。如果虚拟内存占用过高，点击 ComfyUI 菜单栏的 **"Free Model and Node Cache"**。
+3.  **云端协同**：本地 (8G) 用于工作流逻辑测试；最终的高清长视频产出，建议导出此 JSON 并通过 **AI Gate** 等云端算力平台一键渲染。
 
 ## 📁 核心脚本说明 (Scripts Reference)
 
