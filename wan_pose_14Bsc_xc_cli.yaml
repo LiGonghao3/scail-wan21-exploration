@@ -1,0 +1,49 @@
+model:
+  network_config:
+    target: sgm.models.wan_video.WanModel
+    params:
+      model_type: "i2v"
+
+  denoiser_config:
+    target: sgm.modules.diffusionmodules.denoiser.DiscreteDenoiser
+    params:
+      num_idx: 1000
+      weighting_config:
+        target: sgm.modules.diffusionmodules.denoiser_weighting.UnitWeighting
+      scaling_config:
+        target: sgm.modules.diffusionmodules.denoiser_scaling.VScaling
+      discretization_config:
+        target: sgm.modules.diffusionmodules.discretizer.EDMDiscretization
+        params:
+          sigma_min: 0.002
+          sigma_max: 80.0
+          rho: 7.0
+
+  first_stage_config:
+    target: sgm.models.wan_vae.WanVAE
+    params:
+      vae_pth: "E:/GitResearch/SCAIL/ckpts/Wan2.1-1.3B/vae/Wan2.1_VAE.pth"
+      z_dim: 16
+
+  # 4. T5 编码器配置 (修正类名为 FrozenUMT5Embedder)
+  conditioner_config:
+    target: sgm.modules.encoders.modules.FrozenT5Embedder
+    params:
+      # 注意：参数名必须是 version，值是你的权重文件夹路径
+      version: "E:/GitResearch/SCAIL/ckpts/Wan2.1-1.3B/models_t5_umt5-xxl-enc-bf16.pth"
+      max_length: 64
+      device: "cpu"
+      freeze: True
+
+args:
+  mode: inference
+  load: "E:/GitResearch/SCAIL/ckpts/Wan2.1-1.3B/diffusion_pytorch_model.safetensors"
+  sampling_image_size: [240, 416]
+  batch_size: 1
+  input_type: cli
+  bf16: True
+  sampling_fps: 16
+  force_inference: True
+  use_pose: True
+  save_tag: scail_wan2.1_test
+  cpu_offload: True
