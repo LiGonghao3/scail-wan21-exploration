@@ -7,6 +7,11 @@
 ## 🛠️ 第一阶段：原生 SCAIL 源码的“外科手术”
 
 在单卡 8G 显存的 Windows 环境下运行原生源码是极大的挑战。我们通过对底层四个核心文件的“降级”与“脱敏”，成功跑通了推理链路。
+### 🐍 依赖环境避坑 (Dependencies)
+由于我们屏蔽了 Triton 和 DeepSpeed，你的 `requirements.txt` 需要做出调整：
+1. **删除**：`triton` 和 `deepspeed`。
+2. **安装核心库**：`pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121`
+3. **关键库**：确保安装了 `omegaconf`, `einops`, `sat`, `sgm`。
 
 ### 1. 自动挂载机制与参数脱敏 (针对 `arguments.py`)
 **痛点**：原生代码依赖复杂的命令行参数，且默认开启分布式初始化。
@@ -110,13 +115,18 @@ model:
 
 ---
 
-## 📂 仓库文件导航
-* `scripts/arguments.py`: 自动参数处理逻辑。
-* `scripts/triton_rotary.py`: 屏蔽 Triton 的兼容性脚本。
-* `scripts/diffusion_video.py`: 单卡环境适配引擎。
-* `scripts/sample_video.py`: 带有路径修复的推理主程序。
-* `configs/wan_pose_14Bsc_xc_cli.yaml`: 8G 显存优化参数模板。
+## 📁 核心脚本说明 (Scripts Reference)
 
+为了方便 Windows 用户快速复现，我们将修改后的核心脚本统一存放在 `/scripts` 目录下：
+
+| 文件名 | 核心修改点 | 作用 |
+| :--- | :--- | :--- |
+| `arguments.py` | 自动挂载 `base` 配置 | 解决命令行参数缺失导致的报错 |
+| `triton_rotary.py` | 屏蔽 `@triton` 装饰器 | 绕过 Windows 无法运行 Triton 的限制 |
+| `diffusion_video.py` | 强行重置并行度为 1 | 适配单卡 8G 显存环境，防止死循环 |
+| `sample_video.py` | 动态路径注入 + GC 清理 | 修复模块找不到问题并防止显存溢出 |
+
+**使用建议**：将上述文件替换掉原生 SCAIL 项目中的对应文件即可直接在 Windows 环境启动。
 ---
 
 ## 🔗 参考与鸣谢 (References & Credits)
