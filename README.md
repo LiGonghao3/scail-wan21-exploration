@@ -152,6 +152,28 @@ model:
 2.  **显存回收**：在 ComfyUI 运行间隙，建议观察任务管理器。如果虚拟内存占用过高，点击 ComfyUI 菜单栏的 **"Free Model and Node Cache"**。
 3.  **云端协同**：本地 (8G) 用于工作流逻辑测试；最终的高清长视频产出，建议导出此 JSON 并通过 **AI Gate** 等云端算力平台一键渲染。
 
+#### 🎬 成果展示 (Results Showcase)
+我们成功将迈克尔·杰克逊 (Michael Jackson) 的经典舞步迁移到了目标人物照片上。
+
+| **目标原图** | **动作参考视频** | **提取的姿态骨架 (DWPose)** | **最终生成结果 (Wan2.1)** |
+| :---: | :---: | :---: | :---: |
+| ![Target]() | ![Motion]() | ![Pose]() | ![Final]() |
+
+#### ⚠️ 关键技术细节与显存优化 (Technical Notes & VRAM Optimization)
+在使用 **RTX 5090 (32GB 显存)** 进行云端部署实验时，我遇到了以下核心瓶颈及解决方案：
+
+* **显存分配陷阱 (OOM)**:
+    * **问题**：在云端同时加载 **32.8GB 的 bf16 完整版主模型** 和 **11.4GB 的 T5 文本编码器** 时，显存会瞬间突破 32GB 极限，导致 `Allocation on device` 报错。
+    * **对策**：为了在 32GB 卡上跑通复杂的 DWPose 工作流，建议将 T5 编码器换成 **fp8 版本 (6.73GB)**，并将主模型也降级为 **fp8 (14.4GB)** 以腾出计算空间。
+
+* **姿态检测节点的干扰**:
+    * **发现**：`PoseDetectionVitPoseToDWPose` 节点在初始化 ONNX 运行时会占用大量显存。
+    * **建议**：务必将所有加载器（Loader）的 `load_device` 设置为 **`offload_device`**，确保姿态检测完成后能及时为采样器腾出显存空间。
+
+* **VAE 文件损坏修复**:
+    * **警告**：如果遇到 `header too large` 错误，说明 VAE 文件不完整或损坏。
+    * **修复**：重新下载 **508MB** 的 `Wan2_1_VAE_fp32.safetensors` 是最稳妥的解决方案。
+
 ## 📁 核心脚本说明 (Scripts Reference)
 
 为了方便 Windows 用户快速复现，我们将修改后的核心脚本统一存放在 `/scripts` 目录下：
