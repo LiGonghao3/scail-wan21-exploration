@@ -157,7 +157,7 @@ model:
 
 | **目标原图** | **动作参考视频** | **提取的姿态骨架 (DWPose)** | **最终生成结果 (Wan2.1)** |
 | :---: | :---: | :---: | :---: |
-| ![Target]() | ![Motion]() | ![Pose]() | ![Final]() |
+| ![Target](assets/a_man.png) | ![Motion](assets/mj_dancing_convert.gif) | ![Pose](assets/body_convert.gif) | ![Final](assets/a_man_convert.gif) |
 
 #### ⚠️ 关键技术细节与显存优化 (Technical Notes & VRAM Optimization)
 在使用 **RTX 5090 (32GB 显存)** 进行云端部署实验时，我遇到了以下核心瓶颈及解决方案：
